@@ -1,0 +1,188 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["ocs", "sync", "haztrack"]
+}
+
+model OcsUser {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  displayName String   @map("display_name")
+  role        OcsRole
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  pcrsCreated Pcr[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+  @@schema("ocs")
+}
+
+enum OcsRole {
+  project_director
+  operations
+  contributor
+
+  @@schema("ocs")
+}
+
+model Pcr {
+  id            String    @id @default(uuid())
+  projectId     String    @map("project_id")
+  lat           Float
+  lng           Float
+  category      String
+  status        PcrStatus @default(active)
+  supersededBy  String?   @map("superseded_by")
+  supersededByR Pcr?      @relation("PcrSupersession", fields: [supersededBy], references: [id])
+  supersedes    Pcr[]     @relation("PcrSupersession")
+  createdBy     String    @map("created_by")
+  createdByUser OcsUser   @relation(fields: [createdBy], references: [id])
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("pcrs")
+  @@schema("ocs")
+}
+
+enum PcrStatus {
+  active
+  superseded
+
+  @@schema("ocs")
+}
+
+model FirstAidContent {
+  id                        String          @id @default(uuid())
+  slug                      String          @unique
+  body                      String
+  version                   Int             @default(1)
+  status                    FirstAidStatus  @default(draft)
+  clinicalAttestationPdfUrl String?         @map("clinical_attestation_pdf_url")
+  releasedBy                String?         @map("released_by")
+  releasedAt                DateTime?       @map("released_at")
+
+  @@map("first_aid_content")
+  @@schema("ocs")
+}
+
+enum FirstAidStatus {
+  draft
+  released
+
+  @@schema("ocs")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  actorUserId   String   @map("actor_user_id")
+  actorUser     OcsUser  @relation(fields: [actorUserId], references: [id])
+  action        String
+  entityType    String   @map("entity_type")
+  entityId      String   @map("entity_id")
+  previousState Json?    @map("previous_state")
+  newState      Json?    @map("new_state")
+  at            DateTime @default(now())
+
+  @@map("audit_log")
+  @@schema("ocs")
+}
+
+model MobileUser {
+  firebaseUid String   @id @map("firebase_uid")
+  displayName String   @map("display_name")
+  archetype   String?
+  preferences Json     @default("{}")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  ownedGroups  Group[]
+  memberships  GroupMember[]
+  pcrMetadata  PcrMetadata[]
+
+  @@map("mobile_users")
+  @@schema("sync")
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  ownerUid  String   @map("owner_uid")
+  owner     MobileUser @relation(fields: [ownerUid], references: [firebaseUid])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members GroupMember[]
+
+  @@map("groups")
+  @@schema("sync")
+}
+
+model GroupMember {
+  groupId  String     @map("group_id")
+  group    Group      @relation(fields: [groupId], references: [id])
+  userUid  String     @map("user_uid")
+  user     MobileUser @relation(fields: [userUid], references: [firebaseUid])
+  joinedAt DateTime   @default(now()) @map("joined_at")
+
+  @@id([groupId, userUid])
+  @@map("group_members")
+  @@schema("sync")
+}
+
+model PcrMetadata {
+  id      String     @id @default(uuid())
+  pcrId   String     @map("pcr_id")
+  userUid String     @map("user_uid")
+  user    MobileUser @relation(fields: [userUid], references: [firebaseUid])
+  notes   String?
+  tags    String[]
+
+  @@map("pcr_metadata")
+  @@schema("sync")
+}
+
+model HazardCache {
+  id         String       @id @default(uuid())
+  source     HazardSource
+  externalId String       @map("external_id")
+  geom       Json
+  payload    Json
+  fetchedAt  DateTime     @map("fetched_at")
+  ttlMinutes Int          @map("ttl_minutes")
+
+  @@unique([source, externalId])
+  @@map("hazard_cache")
+  @@schema("haztrack")
+}
+
+enum HazardSource {
+  bom
+  afac
+  ses
+
+  @@schema("haztrack")
+}
+
+model IngestRun {
+  id           String       @id @default(uuid())
+  source       HazardSource
+  startedAt    DateTime     @default(now()) @map("started_at")
+  finishedAt   DateTime?    @map("finished_at")
+  status       IngestStatus @default(ok)
+  itemsFetched Int          @default(0) @map("items_fetched")
+  error        String?
+
+  @@map("ingest_runs")
+  @@schema("haztrack")
+}
+
+enum IngestStatus {
+  ok
+  partial
+  failed
+
+  @@schema("haztrack")
+}

@@ -1,0 +1,4 @@
+[
+  { "externalId": "afac-fire-001", "geom": { "type": "Point", "coordinates": [149.1, -35.3] }, "payload": { "type": "bushfire", "severity": "extreme", "title": "ACT Bushfire Emergency" } },
+  { "externalId": "afac-fire-002", "geom": { "type": "Point", "coordinates": [138.6, -34.9] }, "payload": { "type": "bushfire", "severity": "high", "title": "Adelaide Hills Fire" } }
+]

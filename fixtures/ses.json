@@ -1,0 +1,4 @@
+[
+  { "externalId": "ses-flood-001", "geom": { "type": "Point", "coordinates": [151.7, -32.9] }, "payload": { "type": "flood", "severity": "high", "title": "Hunter Valley Flood" } },
+  { "externalId": "ses-rescue-001", "geom": { "type": "Point", "coordinates": [150.5, -33.7] }, "payload": { "type": "rescue", "severity": "moderate", "title": "Blue Mountains Rescue Op" } }
+]
