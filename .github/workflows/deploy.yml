@@ -47,8 +47,8 @@ jobs:
           echo "🔨 Building image..."
           docker compose build api
 
-          echo "🚀 Starting services..."
-          docker compose up -d
+          echo "🚀 Starting postgres..."
+          docker compose up -d postgres
 
           echo "⏳ Waiting for PostgreSQL..."
           for i in {1..30}; do
@@ -59,8 +59,19 @@ jobs:
             sleep 1
           done
 
-          echo "🔄 Running migrations..."
-          docker compose exec -T api npx prisma migrate deploy
+          echo "🔄 Running migrations from host..."
+          # Use host-exposed postgres port for migration
+          export DATABASE_URL="postgresql://trackaroo:trackaroo@localhost:5435/trackaroo"
+          npx prisma migrate deploy
 
-          echo "✅ Deploy finished"
-          docker ps --filter name=trackaroo --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          echo "🚀 Starting API..."
+          docker compose up -d api
+
+          echo "⏳ Waiting for API to be healthy..."
+          sleep 5
+
+          echo "📋 Container status:"
+          docker compose ps
+
+          echo "📜 API logs (last 20 lines):"
+          docker compose logs --tail=20 api || true
