@@ -17,13 +17,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Send Webhook Notification (Start)
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
-          curl -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \"🚀 *Deploy started* on *Server Dev* for branch: *${{ github.ref_name }}*\\nCommit: $COMMIT_MSG\"}"
-
       - name: Sync code to deploy directory
         run: |
           mkdir -p ~/trackaroo-poc/trackaroo-be
@@ -73,16 +66,3 @@ jobs:
           docker compose -f docker-compose.yml exec -T api npx prisma migrate deploy
           echo "✅ Migrations completed!"
 
-      - name: Send Webhook Notification (Success)
-        if: success()
-        run: |
-          curl -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \"✅ *Deploy success* for branch *${{ github.ref_name }}* on *Server Dev*!\"}"
-
-      - name: Send Webhook Notification (Failure)
-        if: failure()
-        run: |
-          curl -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \"❌ *Deploy failed* for branch *${{ github.ref_name }}* on *Server Dev*!\"}"
