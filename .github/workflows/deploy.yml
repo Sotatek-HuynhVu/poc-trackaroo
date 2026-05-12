@@ -33,9 +33,9 @@ jobs:
             --exclude='dist' \
             ./ /home/sotatek/trackaroo-poc/
 
-      - name: Copy ENV file to deploy directory
+      - name: Create ENV file in deploy directory
         run: |
-          rsync -azh ~/work-space/be-runner/.env /home/sotatek/trackaroo-poc/
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > /home/sotatek/trackaroo-poc/.env
 
       - name: Build & Run containers
         working-directory: /home/sotatek/trackaroo-poc

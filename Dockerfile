@@ -1,8 +1,8 @@
 FROM node:22-alpine AS build
 RUN corepack enable
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm config set ignore-build-scripts false && pnpm install --frozen-lockfile
 COPY . .
 RUN npx prisma generate
 RUN pnpm run build
