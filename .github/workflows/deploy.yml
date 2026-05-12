@@ -26,19 +26,19 @@ jobs:
 
       - name: Sync code to deploy directory
         run: |
-          mkdir -p /home/sotatek/trackaroo-poc
+          mkdir -p ~/trackaroo-poc/trackaroo-be
           rsync -azh --delete \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='dist' \
-            ./ /home/sotatek/trackaroo-poc/
+            ./ ~/trackaroo-poc/trackaroo-be/
 
       - name: Create ENV file in deploy directory
         run: |
-          echo "${{ secrets.ENV_FILE_CONTENT }}" > /home/sotatek/trackaroo-poc/.env
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > ~/trackaroo-poc/trackaroo-be/.env
 
       - name: Build & Run containers
-        working-directory: /home/sotatek/trackaroo-poc
+        working-directory: ~/trackaroo-poc/trackaroo-be
         run: |
           echo "🔨 Building Docker services..."
           docker compose -f docker-compose.yml build api
@@ -47,7 +47,7 @@ jobs:
           echo "✅ All services started successfully!"
 
       - name: Wait for database to be ready
-        working-directory: /home/sotatek/trackaroo-poc
+        working-directory: ~/trackaroo-poc/trackaroo-be
         run: |
           echo "⏳ Waiting for PostgreSQL to be ready..."
           timeout=30
@@ -63,7 +63,7 @@ jobs:
           echo "✅ Database is ready!"
 
       - name: Run Prisma migrations
-        working-directory: /home/sotatek/trackaroo-poc
+        working-directory: ~/trackaroo-poc/trackaroo-be
         run: |
           echo "🔄 Running database migrations..."
           docker compose -f docker-compose.yml exec -T api npx prisma migrate deploy
