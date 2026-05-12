@@ -1,68 +1,66 @@
 name: Deploy
-run-name: 🚀 Deploy by ${{ github.actor }}
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  # ==============================================================
-  # Deploy to Dev Server (self-hosted runner)
-  # ==============================================================
-  deploy-develop:
-    name: Deploy development (Server Dev)
+  deploy:
     runs-on: [self-hosted, Linux, X64]
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Sync code to deploy directory
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: true
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build
+        run: pnpm build
+
+      - name: Deploy to server
         run: |
-          mkdir -p ~/trackaroo-poc/trackaroo-be
+          DEPLOY_DIR=/home/sotatek/trackaroo-poc/trackaroo-be
+          mkdir -p $DEPLOY_DIR
+
           rsync -azh --delete \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='dist' \
-            ./ ~/trackaroo-poc/trackaroo-be/
-          echo "📁 Deploy directory contents:"
-          ls -la ~/trackaroo-poc/trackaroo-be/
+            --exclude='.claude' \
+            ./ $DEPLOY_DIR/
 
-      - name: Create ENV file in deploy directory
-        run: |
-          echo "${{ secrets.ENV_FILE_CONTENT }}" > ~/trackaroo-poc/trackaroo-be/.env
-
-      - name: Build & Run containers
-        working-directory: ~/trackaroo-poc/trackaroo-be
-        run: |
-          echo "🔨 Building Docker services..."
-          docker compose -f docker-compose.yml build api
-          echo "🚀 Starting all services with runner .env file..."
-          docker compose -f docker-compose.yml --env-file .env up -d
-          echo "📦 Running containers:"
-          docker ps -a | grep trackaroo || echo "No trackaroo containers found"
-          echo "✅ All services started successfully!"
-
-      - name: Wait for database to be ready
-        working-directory: ~/trackaroo-poc/trackaroo-be
-        run: |
-          echo "⏳ Waiting for PostgreSQL to be ready..."
-          timeout=30
-          counter=0
-          until docker compose -f docker-compose.yml exec -T postgres pg_isready -U trackaroo || [ $counter -eq $timeout ]; do
-            sleep 1
-            counter=$((counter+1))
-          done
-          if [ $counter -eq $timeout ]; then
-            echo "❌ Database connection timeout"
-            exit 1
+          # Write env if available
+          if [ -n "${{ secrets.ENV_FILE_CONTENT }}" ]; then
+            echo "${{ secrets.ENV_FILE_CONTENT }}" > $DEPLOY_DIR/.env
           fi
-          echo "✅ Database is ready!"
 
-      - name: Run Prisma migrations
-        working-directory: ~/trackaroo-poc/trackaroo-be
-        run: |
-          echo "🔄 Running database migrations..."
-          docker compose -f docker-compose.yml exec -T api npx prisma migrate deploy
-          echo "✅ Migrations completed!"
+          cd $DEPLOY_DIR
 
+          echo "🔨 Building image..."
+          docker compose build api
+
+          echo "🚀 Starting services..."
+          docker compose up -d
+
+          echo "⏳ Waiting for PostgreSQL..."
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U trackaroo > /dev/null 2>&1; then
+              echo "✅ DB ready"
+              break
+            fi
+            sleep 1
+          done
+
+          echo "🔄 Running migrations..."
+          docker compose exec -T api npx prisma migrate deploy
+
+          echo "✅ Deploy finished"
+          docker ps --filter name=trackaroo --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
