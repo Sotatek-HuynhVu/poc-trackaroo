@@ -12,7 +12,7 @@ jobs:
   # ==============================================================
   deploy-develop:
     name: Deploy development (Server Dev)
-    runs-on: [self-hosted, server-dev]
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
