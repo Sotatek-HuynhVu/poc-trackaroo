@@ -65,6 +65,9 @@ jobs:
           echo "🔄 Running migrations..."
           docker compose run --rm api npx prisma migrate deploy
 
+          echo "⏳ Waiting for migration container cleanup..."
+          sleep 5
+
           echo "🚀 Starting API..."
           docker compose up -d api
 
