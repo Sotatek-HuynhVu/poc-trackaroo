@@ -24,11 +24,21 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"text\": \"🚀 *Deploy started* on *Server Dev* for branch: *${{ github.ref_name }}*\\nCommit: $COMMIT_MSG\"}"
 
-      - name: Copy ENV file from runner
+      - name: Sync code to deploy directory
         run: |
-          rsync -azh ~/work-space/be-runner/.env ./
+          mkdir -p /home/sotatek/trackaroo-poc
+          rsync -azh --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            ./ /home/sotatek/trackaroo-poc/
+
+      - name: Copy ENV file to deploy directory
+        run: |
+          rsync -azh ~/work-space/be-runner/.env /home/sotatek/trackaroo-poc/
 
       - name: Build & Run containers
+        working-directory: /home/sotatek/trackaroo-poc
         run: |
           echo "🔨 Building Docker services..."
           docker compose -f docker-compose.yml build api
@@ -37,6 +47,7 @@ jobs:
           echo "✅ All services started successfully!"
 
       - name: Wait for database to be ready
+        working-directory: /home/sotatek/trackaroo-poc
         run: |
           echo "⏳ Waiting for PostgreSQL to be ready..."
           timeout=30
@@ -52,6 +63,7 @@ jobs:
           echo "✅ Database is ready!"
 
       - name: Run Prisma migrations
+        working-directory: /home/sotatek/trackaroo-poc
         run: |
           echo "🔄 Running database migrations..."
           docker compose -f docker-compose.yml exec -T api npx prisma migrate deploy
