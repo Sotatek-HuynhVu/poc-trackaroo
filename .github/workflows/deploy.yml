@@ -4,7 +4,7 @@ run-name: 🚀 Deploy by ${{ github.actor }}
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
   # ==============================================================
@@ -32,6 +32,8 @@ jobs:
             --exclude='node_modules' \
             --exclude='dist' \
             ./ ~/trackaroo-poc/trackaroo-be/
+          echo "📁 Deploy directory contents:"
+          ls -la ~/trackaroo-poc/trackaroo-be/
 
       - name: Create ENV file in deploy directory
         run: |
@@ -44,6 +46,8 @@ jobs:
           docker compose -f docker-compose.yml build api
           echo "🚀 Starting all services with runner .env file..."
           docker compose -f docker-compose.yml --env-file .env up -d
+          echo "📦 Running containers:"
+          docker ps -a | grep trackaroo || echo "No trackaroo containers found"
           echo "✅ All services started successfully!"
 
       - name: Wait for database to be ready
