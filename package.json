@@ -50,6 +50,19 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "@scarf/scarf",
+      "esbuild",
+      "prisma",
+      "protobufjs"
+    ]
+  },
+  "packageManager": "pnpm@9.15.0",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
