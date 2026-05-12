@@ -37,9 +37,12 @@ jobs:
             --exclude='.claude' \
             ./ $DEPLOY_DIR/
 
-          # Write env if available
+          # Write env file
           if [ -n "${{ secrets.ENV_FILE_CONTENT }}" ]; then
             echo "${{ secrets.ENV_FILE_CONTENT }}" > $DEPLOY_DIR/.env
+          else
+            cp $DEPLOY_DIR/.env.example $DEPLOY_DIR/.env
+            sed -i 's|localhost|postgres|g' $DEPLOY_DIR/.env
           fi
 
           cd $DEPLOY_DIR
@@ -59,10 +62,8 @@ jobs:
             sleep 1
           done
 
-          echo "🔄 Running migrations from host..."
-          # Use host-exposed postgres port for migration
-          export DATABASE_URL="postgresql://trackaroo:trackaroo@localhost:5435/trackaroo"
-          npx prisma migrate deploy
+          echo "🔄 Running migrations..."
+          docker compose run --rm api npx prisma migrate deploy
 
           echo "🚀 Starting API..."
           docker compose up -d api
