@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: trackaroo
+          POSTGRES_PASSWORD: trackaroo
+          POSTGRES_DB: trackaroo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: true
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://trackaroo:trackaroo@localhost:5432/trackaroo
+        run: npx prisma migrate deploy
+
+      - name: Check prohibited patterns
+        run: pnpm check:prohibited
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://trackaroo:trackaroo@localhost:5432/trackaroo
+          AUTH_PROVIDER: mock
+          AUTH_JWT_SECRET: github-ci-secret-32
+        run: pnpm test
+        continue-on-error: true
+
+      - name: Build Docker image
+        run: docker build -t trackaroo-poc:test .

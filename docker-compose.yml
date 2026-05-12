@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3003:3000"
     environment:
       DATABASE_URL: postgresql://trackaroo:trackaroo@postgres:5432/trackaroo
       AUTH_PROVIDER: mock

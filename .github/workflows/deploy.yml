@@ -1,0 +1,72 @@
+name: Deploy
+run-name: 🚀 Deploy by ${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  # ==============================================================
+  # Deploy to Dev Server (self-hosted runner)
+  # ==============================================================
+  deploy-develop:
+    name: Deploy development (Server Dev)
+    runs-on: [self-hosted, server-dev]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Send Webhook Notification (Start)
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          curl -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"🚀 *Deploy started* on *Server Dev* for branch: *${{ github.ref_name }}*\\nCommit: $COMMIT_MSG\"}"
+
+      - name: Copy ENV file from runner
+        run: |
+          rsync -azh ~/work-space/be-runner/.env ./
+
+      - name: Build & Run containers
+        run: |
+          echo "🔨 Building Docker services..."
+          docker compose -f docker-compose.yml build api
+          echo "🚀 Starting all services with runner .env file..."
+          docker compose -f docker-compose.yml --env-file .env up -d
+          echo "✅ All services started successfully!"
+
+      - name: Wait for database to be ready
+        run: |
+          echo "⏳ Waiting for PostgreSQL to be ready..."
+          timeout=30
+          counter=0
+          until docker compose -f docker-compose.yml exec -T postgres pg_isready -U trackaroo || [ $counter -eq $timeout ]; do
+            sleep 1
+            counter=$((counter+1))
+          done
+          if [ $counter -eq $timeout ]; then
+            echo "❌ Database connection timeout"
+            exit 1
+          fi
+          echo "✅ Database is ready!"
+
+      - name: Run Prisma migrations
+        run: |
+          echo "🔄 Running database migrations..."
+          docker compose -f docker-compose.yml exec -T api npx prisma migrate deploy
+          echo "✅ Migrations completed!"
+
+      - name: Send Webhook Notification (Success)
+        if: success()
+        run: |
+          curl -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"✅ *Deploy success* for branch *${{ github.ref_name }}* on *Server Dev*!\"}"
+
+      - name: Send Webhook Notification (Failure)
+        if: failure()
+        run: |
+          curl -X POST "${{ secrets.GOOGLE_CHAT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"❌ *Deploy failed* for branch *${{ github.ref_name }}* on *Server Dev*!\"}"

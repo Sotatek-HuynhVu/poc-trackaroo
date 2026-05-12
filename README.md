@@ -27,6 +27,8 @@ pnpm start:dev
 - API: http://localhost:3000
 - Swagger docs: http://localhost:3000/api-docs
 
+> **Docker:** exposed on port `3003` (mapped `3003:3000`).
+
 ## Tech Stack
 
 - **Framework:** NestJS 11 (Express platform)
