@@ -11,7 +11,13 @@ export class AuthController {
 
   @Post('login')
   @Public()
-  @ApiOperation({ summary: 'Login (mock mode — any password accepted for POC)' })
+  @ApiOperation({
+    summary: 'Mock login (POC only)',
+    description:
+      '**MOCK MODE ONLY** — This endpoint does NOT exist when AUTH_PROVIDER=firebase. ' +
+      'In Firebase mode, mobile clients authenticate directly via Firebase Auth SDK and send ' +
+      'the resulting ID Token as `Authorization: Bearer <token>` on every request.',
+  })
   @ApiResponse({ status: 200, description: 'Returns JWT token + user info' })
   @ApiResponse({ status: 401, description: 'User not found' })
   async login(@Body() dto: LoginDto) {
