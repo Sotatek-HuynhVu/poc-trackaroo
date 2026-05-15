@@ -35,12 +35,13 @@ jobs:
             --exclude='node_modules' \
             --exclude='dist' \
             --exclude='.claude' \
+            --exclude='.env' \
             ./ $DEPLOY_DIR/
 
           # Write env file
           if [ -n "${{ secrets.ENV_FILE_CONTENT }}" ]; then
             echo "${{ secrets.ENV_FILE_CONTENT }}" > $DEPLOY_DIR/.env
-          else
+          elif [ ! -f "$DEPLOY_DIR/.env" ]; then
             cp $DEPLOY_DIR/.env.example $DEPLOY_DIR/.env
             sed -i 's|localhost|postgres|g' $DEPLOY_DIR/.env
           fi
