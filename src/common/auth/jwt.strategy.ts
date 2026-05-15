@@ -18,6 +18,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  async authenticate(req: any, options?: any) {
+    const provider = this.config.get<string>('AUTH_PROVIDER');
+    if (provider === 'firebase') {
+      const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+      if (!token) {
+        return this.fail({ message: 'Missing token' }, 401);
+      }
+      try {
+        const user = await this.firebaseAuth.verifyToken(token);
+        return this.success(user);
+      } catch (e: any) {
+        return this.error(new UnauthorizedException(e.message ?? 'Invalid Firebase token'));
+      }
+    }
+    return super.authenticate(req, options);
+  }
+
   async validate(req: any, payload: any): Promise<AuthUser> {
     const provider = this.config.get<string>('AUTH_PROVIDER');
 
